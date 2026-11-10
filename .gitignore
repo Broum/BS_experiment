@@ -1,0 +1,7 @@
+.venv/
+.env
+.IQM_token
+__pycache__/
+.ipynb_checkpoints/
+lexis_logs.log
+calibration/
