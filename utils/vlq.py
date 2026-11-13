@@ -92,11 +92,14 @@ def transpile(circuits: list[QuantumCircuit], backend, layout: list[str] | None 
     return out, layout
 
 
-def submit(backend, transpiled: list[QuantumCircuit], shots: int, seed: int | None = None):
-    """Starts one job for all circuits; returns the job (FakeVLQ: the counts directly)."""
+def submit(backend, transpiled: list[QuantumCircuit], shots: int, seed: int | None = None, **run_options):
+    """Starts one job for all circuits; returns the job (FakeVLQ: the counts directly).
+
+    ``run_options`` go to ``backend.run`` (e.g. ``circuit_compilation_options``); FakeVLQ ignores them.
+    """
     if isinstance(backend, IQMFakeBackend):
         return _run_fake(backend, transpiled, shots, seed)
-    job = backend.run(transpiled, shots=shots)
+    job = backend.run(transpiled, shots=shots, **run_options)
     print(f"{backend.name} job id: {job.job_id()}")
     return job
 
@@ -105,9 +108,20 @@ def collect(job) -> list[dict[str, int]]:
     """Waits for a job from :func:`submit`; counts per circuit."""
     if isinstance(job, list):
         return job
-    vlq_job = type(job).__module__.startswith("qheappe_client")
-    result = job.result(qiskit_legacy=True) if vlq_job else job.result()
+    if not type(job).__module__.startswith("qheappe_client"):
+        result = job.result()
+        return [result.get_counts(i) for i in range(len(result.results))]
+    # IQM strings are clbit 0 first; qaas's default (False) would reverse every key.
+    result = job.result(qiskit_legacy=True, key_order_left_to_right=True)
+    for exp in result.results:
+        _check_key_order(exp.header.get("measurement_keys", []))
     return [result.get_counts(i) for i in range(len(result.results))]
+
+
+def _check_key_order(keys: list[str]) -> None:
+    """IQM keys are ``<creg>_<size>_<reg idx>_<clbit idx>``; they must come in clbit order."""
+    if [int(k.rsplit("_", 1)[1]) for k in keys] != list(range(len(keys))):
+        raise RuntimeError(f"measurement keys not in clbit order: {keys}")
 
 
 def run(backend, transpiled: list[QuantumCircuit], shots: int, seed: int | None = None) -> list[dict[str, int]]:

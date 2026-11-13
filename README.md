@@ -18,6 +18,12 @@ Minimal setup to run the truncated beam-splitter circuits from
 | `scripts/generate_fake_vlq_backend.py` | FakeVLQ generator |
 | `scripts/plot_tilted_bs.py` | Plotly figures of a \|1>\|1> run (probabilities, post-selected, fidelity) with error bars, in the style of `Tomev/gbs-compiler` `experiments/tilted_bs` |
 | `scripts/recover_run_2026-11-09_163711.py` | Rebuilds the unsaved `results.json` of VLQ job 275 (VLQ from the printed table, FakeVLQ re-run) |
+| `scripts/check_move_validity.py` | Noise-free check of the transpiled circuits on the star: illegal MOVEs (qubit and resonator both excited), gates on the resonator, HF |
+| `scripts/fit_move_phases.py` | Fits one residual Z phase per qubit per MOVE sandwich to the stored VLQ counts (coherent-error model) |
+| `scripts/move_sandwich_test.py` | Ramsey tests of the MOVE sandwich on VLQ: `--test single` (phase vs resonator CZs held), `--test multi` (idle crosstalk and resonator-frame carry-over from another qubit's sandwiches); per frame-tracking mode; `--dry-run`, `--fetch`, `--analyse` |
+| `scripts/endpoint_position_test.py` | One VLQ job separating the θ = 0, π/2 failure: simplified (level 3) vs unsimplified (level 1) endpoint circuits, at the batch edges and in the middle |
+| `scripts/cz_motif_test.py` | Population test of MOVE H,R · CZ P,R · MOVE H,R for all qubit pairs (does the CZ swap?), plus the BS endpoints with barriers |
+| `scripts/refetch_vlq_jobs.py` | Re-fetches finished VLQ jobs: raw counts with per-circuit `measurement_keys`, matched to the stored run; `--scan` lists job ids |
 | `calibration/VLQ/`, `calibration/SIRIUS/` | Downloaded calibration (quality-metric-set) files; the newest one is used |
 | `tests/` | Circuits against the exact truncated BS unitary; qubit selection on the stored calibration files |
 | `tmp/` | Reference notebook from another project (GHZ5 on best qubits, VLQ vs Sirius); not used here |
@@ -115,6 +121,11 @@ For VLQ, `qs.fetch_vlq_calibration(backend)` downloads the current metrics throu
 
 Sanity check for real runs: at θ = 0 the output must be mostly (1,1). If it comes out as (2,2), the bit order is
 reversed.
+
+**VLQ bit order.** qaas 1.0's `QJob.result()` defaults to `key_order_left_to_right=False`, which reverses every IQM
+bitstring. `vlq.collect()` sets it to `True` and checks the measurement keys since 2026-11-12. All VLQ counts saved
+before that (every VLQ run in `Results/` up to 2026-11-12) have reversed keys: reverse them before any analysis.
+Findings and open points: [Results/FINDINGS_VLQ_BS_systematic_error_2026-11-12.md](Results/FINDINGS_VLQ_BS_systematic_error_2026-11-12.md).
 
 ## FakeVLQ
 
